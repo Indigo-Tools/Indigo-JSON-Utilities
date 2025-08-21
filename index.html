@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft JSON Utilities</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        accent: '#52489c', // The requested accent color
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Custom file input button styling */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid currentColor;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Styled success message */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeInOut 3s forwards;
+        }
+        
+        .message-box.success { background-color: #4CAF50; }
+        .message-box.error { background-color: #F44336; }
+        .message-box.info { background-color: #2196F3; }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            90% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* Custom Toggle Switch Styling */
+        .toggle-switch {
+            position: relative;
+            display: flex;
+            width: 100%;
+            max-width: 300px;
+            height: 50px;
+            background-color: #f3f4f6;
+            border-radius: 9999px;
+            padding: 4px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+        .dark .toggle-switch {
+            background-color: #374151;
+        }
+
+        .toggle-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: color 0.3s ease;
+            z-index: 10;
+            color: #4b5563; /* Default text color */
+        }
+        .dark .toggle-option {
+            color: #9ca3af; /* Default dark text color */
+        }
+
+        .toggle-thumb {
+            position: absolute;
+            width: calc(50% - 8px);
+            height: calc(100% - 8px);
+            background-color: #52489c; /* Accent color */
+            border-radius: 9999px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-option.active {
+            color: white;
+        }
+
+        .toggle-switch-beautify .toggle-thumb {
+            transform: translateX(0);
+        }
+
+        .toggle-switch-minify .toggle-thumb {
+            transform: translateX(calc(100% + 8px));
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Card Container -->
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-4xl transition-colors duration-300">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl lg:text-4xl font-bold text-accent">Minecraft JSON Utilities</h1>
+            <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-300">
+                <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="flex flex-wrap border-b border-gray-300 dark:border-gray-700 mb-6">
+            <button id="obfuscate-json-tab" class="py-2 px-4 text-sm font-semibold border-b-2 border-transparent transition-colors duration-200 hover:border-accent focus:outline-none">JSON Obfuscator</button>
+            <button id="deobfuscate-json-tab" class="py-2 px-4 text-sm font-semibold border-b-2 border-transparent transition-colors duration-200 hover:border-accent focus:outline-none">JSON Deobfuscator</button>
+            <button id="obfuscate-zip-tab" class="py-2 px-4 text-sm font-semibold border-b-2 border-transparent transition-colors duration-200 hover:border-accent focus:outline-none">ZIP Obfuscator</button>
+            <button id="deobfuscate-zip-tab" class="py-2 px-4 text-sm font-semibold border-b-2 border-transparent transition-colors duration-200 hover:border-accent focus:outline-none">ZIP Deobfuscator</button>
+        </div>
+
+        <!-- JSON Obfuscator Section -->
+        <div id="obfuscate-json-section" class="tab-content">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">JSON Obfuscator</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">
+                Paste your JSON code to obfuscate it, making it harder to read and edit.
+            </p>
+            <div class="input-group mb-6">
+                <label for="json-obfuscate-input" class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-keyboard"></i> Input JSON
+                </label>
+                <div class="relative">
+                    <textarea id="json-obfuscate-input" rows="10" placeholder="Paste your JSON here..." class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                </div>
+            </div>
+
+            <!-- Format Output Toggles -->
+            <div class="mb-6">
+                <label class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-tools"></i> Format Output
+                </label>
+                <div id="obfuscate-format-toggle" class="toggle-switch toggle-switch-beautify">
+                    <div class="toggle-thumb"></div>
+                    <span class="toggle-option active" data-format="beautify">Beautify</span>
+                    <span class="toggle-option" data-format="minify">Minify</span>
+                </div>
+            </div>
+
+            <button id="obfuscate-btn" class="w-full py-4 bg-accent text-white font-bold text-lg rounded-full shadow-lg transform transition-transform duration-300 hover:scale-105 hover:bg-accent/80 flex items-center justify-center gap-3">
+                <i class="fas fa-shield-alt"></i> Obfuscate Code
+            </button>
+
+            <div class="input-group mt-6">
+                <label for="json-obfuscate-output" class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-lock"></i> Obfuscated Output
+                </label>
+                <div class="relative">
+                    <textarea id="json-obfuscate-output" rows="10" readonly class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                </div>
+            </div>
+
+            <button id="copy-obfuscate-btn" class="w-full py-3 mt-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-lg rounded-full shadow-lg transform transition-transform duration-300 hover:scale-105 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-3">
+                <i class="fas fa-copy"></i> Copy to Clipboard
+            </button>
+        </div>
+
+        <!-- JSON Deobfuscator Section -->
+        <div id="deobfuscate-json-section" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">JSON Deobfuscator</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">
+                Paste obfuscated JSON to convert it back to human-readable format.
+            </p>
+            <div class="input-group mb-6">
+                <label for="json-deobfuscate-input" class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-lock"></i> Obfuscated Input
+                </label>
+                <div class="relative">
+                    <textarea id="json-deobfuscate-input" rows="10" placeholder="Paste obfuscated JSON here..." class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                </div>
+            </div>
+
+            <!-- Format Output Toggles -->
+            <div class="mb-6">
+                <label class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-tools"></i> Format Output
+                </label>
+                <div id="deobfuscate-format-toggle" class="toggle-switch toggle-switch-beautify">
+                    <div class="toggle-thumb"></div>
+                    <span class="toggle-option active" data-format="beautify">Beautify</span>
+                    <span class="toggle-option" data-format="minify">Minify</span>
+                </div>
+            </div>
+
+            <button id="deobfuscate-btn" class="w-full py-4 bg-accent text-white font-bold text-lg rounded-full shadow-lg transform transition-transform duration-300 hover:scale-105 hover:bg-accent/80 flex items-center justify-center gap-3">
+                <i class="fas fa-unlock-alt"></i> Deobfuscate Code
+            </button>
+
+            <div class="input-group mt-6">
+                <label for="json-deobfuscate-output" class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-keyboard"></i> Deobfuscated Output
+                </label>
+                <div class="relative">
+                    <textarea id="json-deobfuscate-output" rows="10" readonly class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                </div>
+            </div>
+
+            <button id="copy-deobfuscate-btn" class="w-full py-3 mt-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-lg rounded-full shadow-lg transform transition-transform duration-300 hover:scale-105 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-3">
+                <i class="fas fa-copy"></i> Copy to Clipboard
+            </button>
+        </div>
+
+        <!-- ZIP Obfuscator Section -->
+        <div id="obfuscate-zip-section" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">ZIP Obfuscator</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">
+                Select a ZIP file to obfuscate all JSON files inside and download the new pack.
+            </p>
+            <div id="zip-obfuscate-upload-area" class="flex flex-col items-center justify-center p-12 lg:p-16 border-4 border-dashed border-accent rounded-2xl cursor-pointer hover:bg-accent/20 transition-colors duration-300">
+                <input type="file" id="zip-obfuscate-input" accept=".zip" class="hidden">
+                <label for="zip-obfuscate-input" class="flex flex-col items-center justify-center cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v9" />
+                    </svg>
+                    <span id="zip-obfuscate-file-name" class="text-xl font-bold text-gray-700 dark:text-gray-200">
+                        Upload ZIP File
+                    </span>
+                    <span class="text-gray-500 dark:text-gray-400 text-center mt-2">
+                        Click or drag and drop your ZIP file here.
+                    </span>
+                </label>
+            </div>
+
+            <!-- Format Output Toggles -->
+            <div class="my-6">
+                <label class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-tools"></i> Format Output
+                </label>
+                <div id="zip-obfuscate-format-toggle" class="toggle-switch toggle-switch-beautify">
+                    <div class="toggle-thumb"></div>
+                    <span class="toggle-option active" data-format="beautify">Beautify</span>
+                    <span class="toggle-option" data-format="minify">Minify</span>
+                </div>
+            </div>
+            
+            <div id="zip-obfuscate-status" class="mt-8 hidden fade-in">
+                <div id="zip-obfuscate-loading" class="flex flex-col items-center gap-4 hidden">
+                    <div class="spinner border-accent"></div>
+                    <p class="text-gray-600 dark:text-gray-300 text-center text-lg">Obfuscating your ZIP file...</p>
+                    <p class="text-sm text-gray-400">This may take a moment. Please wait.</p>
+                </div>
+                <div id="zip-obfuscate-success" class="flex flex-col items-center gap-4 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-xl font-semibold text-gray-800 dark:text-white">Obfuscation Complete!</p>
+                    <button id="zip-obfuscate-download" class="bg-green-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-600 transition-all duration-200 w-full">
+                        Download Obfuscated ZIP
+                    </button>
+                </div>
+                <div id="zip-obfuscate-error" class="flex flex-col items-center gap-4 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-xl font-semibold text-red-500">Something went wrong!</p>
+                    <p id="zip-obfuscate-error-message" class="text-gray-600 dark:text-gray-300 text-center"></p>
+                    <button id="zip-obfuscate-try-again" class="mt-4 bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-600 transition-all duration-200 w-full">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ZIP Deobfuscator Section -->
+        <div id="deobfuscate-zip-section" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">ZIP Deobfuscator</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">
+                Select a ZIP file containing obfuscated JSON to automatically deobfuscate it.
+            </p>
+
+            <!-- File Upload Section -->
+            <div id="zip-deobfuscate-upload-area" class="flex flex-col items-center justify-center p-12 lg:p-16 border-4 border-dashed border-accent rounded-2xl cursor-pointer hover:bg-accent/20 transition-colors duration-300">
+                <input type="file" id="zip-deobfuscate-input" accept=".zip" class="hidden">
+                <label for="zip-deobfuscate-input" class="flex flex-col items-center justify-center cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v9" />
+                    </svg>
+                    <span id="zip-deobfuscate-file-name" class="text-xl font-bold text-gray-700 dark:text-gray-200">
+                        Upload ZIP File
+                    </span>
+                    <span class="text-gray-500 dark:text-gray-400 text-center mt-2">
+                        Click or drag and drop your ZIP file here.
+                    </span>
+                </label>
+            </div>
+
+            <!-- Format Output Toggles -->
+            <div class="my-6">
+                <label class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
+                    <i class="fas fa-tools"></i> Format Output
+                </label>
+                <div id="zip-deobfuscate-format-toggle" class="toggle-switch toggle-switch-beautify">
+                    <div class="toggle-thumb"></div>
+                    <span class="toggle-option active" data-format="beautify">Beautify</span>
+                    <span class="toggle-option" data-format="minify">Minify</span>
+                </div>
+            </div>
+            
+            <!-- Processing & Result Section (initially hidden) -->
+            <div id="zip-deobfuscate-status" class="mt-8 hidden fade-in">
+                <!-- Loading State -->
+                <div id="zip-deobfuscate-loading" class="flex flex-col items-center gap-4 hidden">
+                    <div class="spinner border-accent"></div>
+                    <p class="text-gray-600 dark:text-gray-300 text-center text-lg">Processing your ZIP file...</p>
+                    <p class="text-sm text-gray-400">Please be patient, this may take a moment.</p>
+                </div>
+                
+                <!-- Success State -->
+                <div id="zip-deobfuscate-success" class="flex flex-col items-center gap-4 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-xl font-semibold text-gray-800 dark:text-white">Deobfuscation Complete!</p>
+                    <button id="zip-deobfuscate-download" class="bg-green-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-600 transition-all duration-200 w-full">
+                        Download Deobfuscated ZIP
+                    </button>
+                </div>
+
+                <!-- Error State -->
+                <div id="zip-deobfuscate-error" class="flex flex-col items-center gap-4 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-xl font-semibold text-red-500">Something went wrong!</p>
+                    <p id="zip-deobfuscate-error-message" class="text-gray-600 dark:text-gray-300 text-center"></p>
+                    <button id="zip-deobfuscate-try-again" class="mt-4 bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-600 transition-all duration-200 w-full">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSZip library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- UI Elements ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+            
+            // Tab Buttons
+            const obfuscateJsonTab = document.getElementById('obfuscate-json-tab');
+            const deobfuscateJsonTab = document.getElementById('deobfuscate-json-tab');
+            const obfuscateZipTab = document.getElementById('obfuscate-zip-tab');
+            const deobfuscateZipTab = document.getElementById('deobfuscate-zip-tab');
+
+            // Tab Sections
+            const obfuscateJsonSection = document.getElementById('obfuscate-json-section');
+            const deobfuscateJsonSection = document.getElementById('deobfuscate-json-section');
+            const obfuscateZipSection = document.getElementById('obfuscate-zip-section');
+            const deobfuscateZipSection = document.getElementById('deobfuscate-zip-section');
+
+            // Obfuscator JSON elements
+            const jsonObfuscateInput = document.getElementById('json-obfuscate-input');
+            const jsonObfuscateOutput = document.getElementById('json-obfuscate-output');
+            const obfuscateBtn = document.getElementById('obfuscate-btn');
+            const copyObfuscateBtn = document.getElementById('copy-obfuscate-btn');
+            const obfuscateFormatToggle = document.getElementById('obfuscate-format-toggle');
+
+            // Deobfuscator JSON elements
+            const jsonDeobfuscateInput = document.getElementById('json-deobfuscate-input');
+            const jsonDeobfuscateOutput = document.getElementById('json-deobfuscate-output');
+            const deobfuscateBtn = document.getElementById('deobfuscate-btn');
+            const copyDeobfuscateBtn = document.getElementById('copy-deobfuscate-btn');
+            const deobfuscateFormatToggle = document.getElementById('deobfuscate-format-toggle');
+            
+            // Obfuscator ZIP elements
+            const zipObfuscateInput = document.getElementById('zip-obfuscate-input');
+            const zipObfuscateFileName = document.getElementById('zip-obfuscate-file-name');
+            const zipObfuscateUploadArea = document.getElementById('zip-obfuscate-upload-area');
+            const zipObfuscateStatus = document.getElementById('zip-obfuscate-status');
+            const zipObfuscateLoading = document.getElementById('zip-obfuscate-loading');
+            const zipObfuscateSuccess = document.getElementById('zip-obfuscate-success');
+            const zipObfuscateError = document.getElementById('zip-obfuscate-error');
+            const zipObfuscateDownload = document.getElementById('zip-obfuscate-download');
+            const zipObfuscateErrorMessage = document.getElementById('zip-obfuscate-error-message');
+            const zipObfuscateTryAgain = document.getElementById('zip-obfuscate-try-again');
+            const zipObfuscateFormatToggle = document.getElementById('zip-obfuscate-format-toggle');
+
+            // Deobfuscator ZIP elements
+            const zipDeobfuscateInput = document.getElementById('zip-deobfuscate-input');
+            const zipDeobfuscateFileName = document.getElementById('zip-deobfuscate-file-name');
+            const zipDeobfuscateUploadArea = document.getElementById('zip-deobfuscate-upload-area');
+            const zipDeobfuscateStatus = document.getElementById('zip-deobfuscate-status');
+            const zipDeobfuscateLoading = document.getElementById('zip-deobfuscate-loading');
+            const zipDeobfuscateSuccess = document.getElementById('zip-deobfuscate-success');
+            const zipDeobfuscateError = document.getElementById('zip-deobfuscate-error');
+            const zipDeobfuscateDownload = document.getElementById('zip-deobfuscate-download');
+            const zipDeobfuscateErrorMessage = document.getElementById('zip-deobfuscate-error-message');
+            const zipDeobfuscateTryAgain = document.getElementById('zip-deobfuscate-try-again');
+            const zipDeobfuscateFormatToggle = document.getElementById('zip-deobfuscate-format-toggle');
+
+            // Global Variables
+            let obfuscatedZipBlob = null;
+            let deobfuscatedZipBlob = null;
+            
+            // --- Theme Toggle Functionality ---
+            function updateThemeIcons(isDark) {
+                if (isDark) {
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                } else {
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                }
+            }
+
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (currentTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                updateThemeIcons(true);
+            } else {
+                updateThemeIcons(false);
+            }
+
+            themeToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                updateThemeIcons(isDark);
+            });
+
+            // --- Tab Switching Logic ---
+            const tabButtons = [obfuscateJsonTab, deobfuscateJsonTab, obfuscateZipTab, deobfuscateZipTab];
+            const tabSections = [obfuscateJsonSection, deobfuscateJsonSection, obfuscateZipSection, deobfuscateZipSection];
+
+            function showTab(tabId) {
+                // Hide all tab sections
+                tabSections.forEach(section => section.classList.add('hidden'));
+
+                // Deactivate all tab buttons' active state
+                tabButtons.forEach(button => {
+                    button.classList.remove('border-accent', 'text-gray-800', 'dark:text-gray-100');
+                    button.classList.add('text-gray-500', 'dark:text-gray-400', 'hover:border-accent');
+                });
+
+                // Show the selected tab section
+                const currentTabSection = document.getElementById(tabId + '-section');
+                currentTabSection.classList.remove('hidden');
+                
+                // Activate the selected tab button and remove its hover effect for a "pressed" look
+                const currentTabButton = document.getElementById(tabId + '-tab');
+                currentTabButton.classList.add('border-accent', 'text-gray-800', 'dark:text-gray-100');
+                currentTabButton.classList.remove('text-gray-500', 'dark:text-gray-400', 'hover:border-accent');
+            }
+
+            obfuscateJsonTab.addEventListener('click', () => showTab('obfuscate-json'));
+            deobfuscateJsonTab.addEventListener('click', () => showTab('deobfuscate-json'));
+            obfuscateZipTab.addEventListener('click', () => showTab('obfuscate-zip'));
+            deobfuscateZipTab.addEventListener('click', () => showTab('deobfuscate-zip'));
+
+            // Set initial active tab
+            showTab('obfuscate-json');
+            
+            // --- Message Box Helper ---
+            function showMessage(message, type = 'info') {
+                let messageElement = document.getElementById('global-message');
+                if (messageElement) {
+                    messageElement.remove();
+                }
+
+                messageElement = document.createElement('div');
+                messageElement.id = 'global-message';
+                messageElement.className = `message-box ${type}`;
+                messageElement.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : (type === 'error' ? 'times-circle' : 'info-circle')}"></i> ${message}`;
+                document.body.appendChild(messageElement);
+            }
+            
+            // --- Toggle Switch Logic ---
+            const toggleSwitches = [
+                obfuscateFormatToggle,
+                deobfuscateFormatToggle,
+                zipObfuscateFormatToggle,
+                zipDeobfuscateFormatToggle
+            ];
+            
+            function setupToggleSwitch(toggleElement) {
+                const options = toggleElement.querySelectorAll('.toggle-option');
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        // Remove active state from all options
+                        options.forEach(opt => opt.classList.remove('active'));
+                        
+                        // Add active state to the clicked option
+                        option.classList.add('active');
+                        
+                        // Update parent class for thumb animation
+                        if (option.dataset.format === 'beautify') {
+                            toggleElement.classList.remove('toggle-switch-minify');
+                            toggleElement.classList.add('toggle-switch-beautify');
+                        } else {
+                            toggleElement.classList.remove('toggle-switch-beautify');
+                            toggleElement.classList.add('toggle-switch-minify');
+                        }
+                    });
+                });
+            }
+
+            toggleSwitches.forEach(setupToggleSwitch);
+
+            // --- JSON Formatting Functions ---
+            function formatJson(jsonString, format) {
+                try {
+                    const parsedJson = JSON.parse(jsonString);
+                    if (format === 'beautify') {
+                        return JSON.stringify(parsedJson, null, 4);
+                    } else if (format === 'minify') {
+                        return JSON.stringify(parsedJson);
+                    }
+                    return jsonString; // Fallback, though 'none' is removed
+                } catch (e) {
+                    console.error("Formatting error:", e);
+                    showMessage('Invalid JSON for formatting.', 'error');
+                    return jsonString; // Return original on error
+                }
+            }
+            
+            // --- JSON Obfuscator Functions ---
+            function obfuscateJson(obj) {
+                if (typeof obj === 'string') {
+                    return `"${obfuscateString(obj)}"`;
+                } else if (Array.isArray(obj)) {
+                    return '[' + obj.map(obfuscateJson).join(',') + ']';
+                } else if (typeof obj === 'object' && obj !== null) {
+                    const entries = Object.entries(obj).map(([key, value]) =>
+                        `"${obfuscateString(key)}":${obfuscateJson(value)}`
+                    );
+                    return `{` + entries.join(',') + `}`;
+                }
+                return JSON.stringify(obj);
+            }
+
+            function obfuscateString(str) {
+                let obfuscated = '';
+                for (let i = 0; i < str.length; i++) {
+                    const code = str.charCodeAt(i).toString(16).padStart(4, '0');
+                    obfuscated += `\\u` + code;
+                }
+                return obfuscated;
+            }
+
+            obfuscateBtn.addEventListener('click', () => {
+                const input = jsonObfuscateInput.value;
+                if (!input.trim()) {
+                    showMessage('Input JSON is empty.', 'info');
+                    return;
+                }
+                try {
+                    const jsonObject = JSON.parse(input);
+                    const obfuscatedJson = obfuscateJson(jsonObject);
+                    const selectedFormat = obfuscateFormatToggle.querySelector('.toggle-option.active').dataset.format;
+                    const finalOutput = formatJson(obfuscatedJson, selectedFormat);
+                    jsonObfuscateOutput.value = finalOutput;
+                } catch (e) {
+                    showMessage('Invalid JSON input. Please check your syntax.', 'error');
+                }
+            });
+
+            copyObfuscateBtn.addEventListener('click', () => {
+                const output = jsonObfuscateOutput.value;
+                if (output) {
+                    navigator.clipboard.writeText(output).then(() => {
+                        showMessage('Copied to clipboard!', 'success');
+                    }).catch(err => {
+                        const tempTextarea = document.createElement('textarea');
+                        tempTextarea.value = output;
+                        document.body.appendChild(tempTextarea);
+                        tempTextarea.select();
+                        try {
+                            document.execCommand('copy');
+                            showMessage('Copied to clipboard!', 'success');
+                        } catch (err) {
+                            console.error('Failed to copy text:', err);
+                            showMessage('Failed to copy. Please copy manually.', 'error');
+                        }
+                        document.body.removeChild(tempTextarea);
+                    });
+                } else {
+                    showMessage('Output is empty. Nothing to copy.', 'info');
+                }
+            });
+            
+            // --- JSON Deobfuscator Functions ---
+            function deobfuscateString(str) {
+                // Remove extra garbage like /*{}*/
+                const cleanedStr = str
+                    .replace(/^\/\*\{\.}\.\}\{\{\.?\*\/\s*/, '')
+                    .replace(/\/\/[^\n\r]*/g, '')
+                    .replace(/\/\*[\s\S]*?\*\//g, '');
+                
+                // Decode the unicode characters
+                return cleanedStr.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+                    String.fromCharCode(parseInt(hex, 16))
+                );
+            }
+
+            deobfuscateBtn.addEventListener('click', () => {
+                const input = jsonDeobfuscateInput.value;
+                if (!input.trim()) {
+                    showMessage('Input JSON is empty.', 'info');
+                    return;
+                }
+                try {
+                    const cleanedJsonString = deobfuscateString(input);
+                    const parsedJson = JSON.parse(cleanedJsonString);
+                    const selectedFormat = deobfuscateFormatToggle.querySelector('.toggle-option.active').dataset.format;
+                    const finalOutput = formatJson(JSON.stringify(parsedJson), selectedFormat);
+                    jsonDeobfuscateOutput.value = finalOutput;
+                } catch (e) {
+                    showMessage('Invalid JSON input. Please check your syntax or ensure it\'s valid obfuscated JSON.', 'error');
+                }
+            });
+
+            copyDeobfuscateBtn.addEventListener('click', () => {
+                const output = jsonDeobfuscateOutput.value;
+                if (output) {
+                    navigator.clipboard.writeText(output).then(() => {
+                        showMessage('Copied to clipboard!', 'success');
+                    }).catch(err => {
+                        const tempTextarea = document.createElement('textarea');
+                        tempTextarea.value = output;
+                        document.body.appendChild(tempTextarea);
+                        tempTextarea.select();
+                        try {
+                            document.execCommand('copy');
+                            showMessage('Copied to clipboard!', 'success');
+                        } catch (err) {
+                            console.error('Failed to copy text:', err);
+                            showMessage('Failed to copy. Please copy manually.', 'error');
+                        }
+                        document.body.removeChild(tempTextarea);
+                    });
+                } else {
+                    showMessage('Output is empty. Nothing to copy.', 'info');
+                }
+            });
+            
+            // --- ZIP Obfuscator Functions ---
+            function handleZipObfuscation(file) {
+                if (!file) {
+                    zipObfuscateFileName.textContent = 'Upload ZIP File';
+                    return;
+                }
+
+                zipObfuscateFileName.textContent = `File selected: ${file.name}`;
+                zipObfuscateUploadArea.classList.add('hidden');
+                zipObfuscateStatus.classList.remove('hidden');
+                zipObfuscateLoading.classList.remove('hidden');
+                zipObfuscateSuccess.classList.add('hidden');
+                zipObfuscateError.classList.add('hidden');
+                obfuscatedZipBlob = null;
+                const selectedFormat = zipObfuscateFormatToggle.querySelector('.toggle-option.active').dataset.format;
+
+                const processZip = async () => {
+                    try {
+                        const zip = new JSZip();
+                        const loadedZip = await zip.loadAsync(file);
+                        const newZip = new JSZip();
+
+                        const filePromises = [];
+                        loadedZip.forEach((relativePath, zipEntry) => {
+                            filePromises.push(new Promise(async (resolve) => {
+                                if (zipEntry.dir) {
+                                    newZip.folder(relativePath);
+                                    resolve();
+                                    return;
+                                }
+
+                                const ext = relativePath.split('.').pop().toLowerCase();
+                                
+                                if (ext === 'json') {
+                                    try {
+                                        const jsonText = await zipEntry.async('string');
+                                        const parsedJson = JSON.parse(jsonText);
+                                        const obfuscatedJson = obfuscateJson(parsedJson);
+                                        const finalOutput = formatJson(obfuscatedJson, selectedFormat);
+                                        newZip.file(relativePath, finalOutput);
+                                        resolve();
+                                    } catch (e) {
+                                        const data = await zipEntry.async('uint8array');
+                                        newZip.file(relativePath, data);
+                                        resolve();
+                                    }
+                                } else {
+                                    const data = await zipEntry.async('uint8array');
+                                    newZip.file(relativePath, data);
+                                    resolve();
+                                }
+                            }));
+                        });
+
+                        await Promise.all(filePromises);
+                        obfuscatedZipBlob = await newZip.generateAsync({ type: 'blob' });
+
+                        zipObfuscateLoading.classList.add('hidden');
+                        zipObfuscateSuccess.classList.remove('hidden');
+                    } catch (e) {
+                        zipObfuscateLoading.classList.add('hidden');
+                        zipObfuscateError.classList.remove('hidden');
+                        zipObfuscateErrorMessage.textContent = `Error: ${e.message}`;
+                        console.error(e);
+                    }
+                };
+                processZip();
+            }
+
+            zipObfuscateInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                handleZipObfuscation(file);
+            });
+            
+            zipObfuscateDownload.addEventListener('click', () => {
+                if (obfuscatedZipBlob) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(obfuscatedZipBlob);
+                    link.download = 'obfuscated.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
+            
+            zipObfuscateTryAgain.addEventListener('click', () => {
+                zipObfuscateUploadArea.classList.remove('hidden');
+                zipObfuscateStatus.classList.add('hidden');
+                zipObfuscateError.classList.add('hidden');
+                zipObfuscateInput.value = '';
+            });
+
+            // Drag and drop functionality for ZIP Obfuscator
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                zipObfuscateUploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            zipObfuscateUploadArea.addEventListener('dragenter', () => zipObfuscateUploadArea.classList.add('bg-accent/20'), false);
+            zipObfuscateUploadArea.addEventListener('dragleave', () => zipObfuscateUploadArea.classList.remove('bg-accent/20'), false);
+            zipObfuscateUploadArea.addEventListener('drop', handleObfuscateDrop, false);
+
+            function handleObfuscateDrop(e) {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                handleZipObfuscation(file);
+            }
+
+
+            // --- ZIP Deobfuscator Functions ---
+            function handleZipDeobfuscation(file) {
+                if (!file) {
+                    zipDeobfuscateFileName.textContent = 'Upload ZIP File';
+                    return;
+                }
+
+                zipDeobfuscateFileName.textContent = `File selected: ${file.name}`;
+                zipDeobfuscateUploadArea.classList.add('hidden');
+                zipDeobfuscateStatus.classList.remove('hidden');
+                zipDeobfuscateLoading.classList.remove('hidden');
+                zipDeobfuscateSuccess.classList.add('hidden');
+                zipDeobfuscateError.classList.add('hidden');
+                deobfuscatedZipBlob = null;
+                const selectedFormat = zipDeobfuscateFormatToggle.querySelector('.toggle-option.active').dataset.format;
+                
+                const processZip = async () => {
+                    try {
+                        const zip = new JSZip();
+                        const loadedZip = await zip.loadAsync(file);
+                        const newZip = new JSZip();
+
+                        const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+                        const namespaceMap = {};
+                        
+                        const filePromises = [];
+                        loadedZip.forEach((relativePath, zipEntry) => {
+                             filePromises.push(new Promise(async (resolve) => {
+                                if (zipEntry.dir) {
+                                    newZip.folder(relativePath);
+                                    resolve();
+                                    return;
+                                }
+        
+                                const ext = relativePath.slice(relativePath.lastIndexOf('.')).toLowerCase();
+
+                                if (relativePath.startsWith("ui/") && ext === ".zip") {
+                                    const innerData = await zipEntry.async('uint8array');
+                                    let namespace = null;
+                                    let outputJson = null;
+
+                                    try {
+                                        const innerZip = await JSZip.loadAsync(innerData);
+                                        for (const [innerPath, innerEntry] of Object.entries(innerZip.files)) {
+                                            if (!innerEntry.dir && innerPath.toLowerCase().endsWith(".json")) {
+                                                const jsonText = await innerEntry.async('string');
+                                                try {
+                                                    const parsed = JSON.parse(deobfuscateString(jsonText));
+                                                    if (parsed.namespace) namespace = parsed.namespace;
+                                                    outputJson = parsed;
+                                                    break;
+                                                } catch { }
+                                            }
+                                        }
+                                    } catch {
+                                        let text = new TextDecoder().decode(innerData);
+                                        text = deobfuscateString(text);
+                                        try {
+                                            const parsed = JSON.parse(text);
+                                            if (parsed.namespace) namespace = parsed.namespace;
+                                            outputJson = parsed;
+                                        } catch {
+                                            outputJson = text;
+                                        }
+                                    }
+                                    if (!namespace) {
+                                        namespace = relativePath.slice(relativePath.lastIndexOf('/') + 1, -4);
+                                    }
+                                    const newName = `ui/${namespace}.json`;
+                                    namespaceMap[relativePath] = newName;
+                                    if (typeof outputJson === 'object') {
+                                        const finalOutput = formatJson(JSON.stringify(outputJson), selectedFormat);
+                                        newZip.file(newName, finalOutput);
+                                    } else {
+                                        newZip.file(newName, outputJson);
+                                    }
+                                    resolve();
+                                    return;
+                                }
+
+                                if (imageExts.includes(ext)) {
+                                    const data = await zipEntry.async('uint8array');
+                                    newZip.file(relativePath, data);
+                                    resolve();
+                                    return;
+                                }
+        
+                                let text = await zipEntry.async('string');
+                                text = deobfuscateString(text);
+                                try {
+                                    const parsed = JSON.parse(text);
+                                    text = formatJson(JSON.stringify(parsed), selectedFormat);
+                                } catch { }
+                                newZip.file(relativePath, text);
+                                resolve();
+                             }));
+                        });
+
+                        await Promise.all(filePromises);
+
+                        const uiDefsPath = "ui/_ui_defs.json";
+                        if (loadedZip.files[uiDefsPath]) {
+                            let defsText = await loadedZip.files[uiDefsPath].async('string');
+                            defsText = deobfuscateString(defsText);
+                            for (const [oldPath, newPath] of Object.entries(namespaceMap)) {
+                                defsText = defsText.replaceAll(oldPath, newPath);
+                            }
+                            defsText = formatJson(defsText, selectedFormat);
+                            newZip.file(uiDefsPath, defsText);
+                        }
+                        
+                        deobfuscatedZipBlob = await newZip.generateAsync({ type: 'blob' });
+
+                        zipDeobfuscateLoading.classList.add('hidden');
+                        zipDeobfuscateSuccess.classList.remove('hidden');
+
+                    } catch (e) {
+                        zipDeobfuscateLoading.classList.add('hidden');
+                        zipDeobfuscateError.classList.remove('hidden');
+                        zipDeobfuscateErrorMessage.textContent = `Error: ${e.message}`;
+                        console.error(e);
+                    }
+                };
+                processZip();
+            }
+
+            zipDeobfuscateInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                handleZipDeobfuscation(file);
+            });
+
+            zipDeobfuscateDownload.addEventListener('click', () => {
+                if (deobfuscatedZipBlob) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(deobfuscatedZipBlob);
+                    link.download = 'deobfuscated.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
+
+            zipDeobfuscateTryAgain.addEventListener('click', () => {
+                zipDeobfuscateUploadArea.classList.remove('hidden');
+                zipDeobfuscateStatus.classList.add('hidden');
+                zipDeobfuscateError.classList.add('hidden');
+                zipDeobfuscateInput.value = '';
+            });
+            
+            // Drag and drop functionality for ZIP Deobfuscator
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                zipDeobfuscateUploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            zipDeobfuscateUploadArea.addEventListener('dragenter', () => zipDeobfuscateUploadArea.classList.add('bg-accent/20'), false);
+            zipDeobfuscateUploadArea.addEventListener('dragleave', () => zipDeobfuscateUploadArea.classList.remove('bg-accent/20'), false);
+            zipDeobfuscateUploadArea.addEventListener('drop', handleDeobfuscateDrop, false);
+
+            function handleDeobfuscateDrop(e) {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                handleZipDeobfuscation(file);
+            }
+        });
+    </script>
+</body>
+</html>
