@@ -171,14 +171,21 @@
         <div id="obfuscate-json-section" class="tab-content">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">JSON Obfuscator</h2>
             <p class="text-gray-600 dark:text-gray-300 mb-6">
-                Paste your JSON code to obfuscate it, making it harder to read and edit.
+                Paste your JSON code or upload a file to obfuscate it, making it harder to read and edit.
             </p>
             <div class="input-group mb-6">
                 <label for="json-obfuscate-input" class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
                     <i class="fas fa-keyboard"></i> Input JSON
                 </label>
-                <div class="relative">
-                    <textarea id="json-obfuscate-input" rows="10" placeholder="Paste your JSON here..." class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                <div id="json-obfuscate-area" class="relative">
+                    <textarea id="json-obfuscate-input" rows="10" placeholder="Paste your JSON here or drag & drop a file..." class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                    <div class="absolute bottom-4 right-4 flex space-x-2">
+                        <label for="obfuscate-file-input" class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 flex items-center space-x-2">
+                            <i class="fas fa-file-upload text-gray-600 dark:text-gray-300"></i>
+                            <span class="text-sm text-gray-800 dark:text-gray-100 font-semibold">Upload JSON File</span>
+                        </label>
+                        <input type="file" id="obfuscate-file-input" accept=".json">
+                    </div>
                 </div>
             </div>
 
@@ -216,14 +223,21 @@
         <div id="deobfuscate-json-section" class="tab-content hidden">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">JSON Deobfuscator</h2>
             <p class="text-gray-600 dark:text-gray-300 mb-6">
-                Paste obfuscated JSON to convert it back to human-readable format.
+                Paste obfuscated JSON or upload a file to convert it back to human-readable format.
             </p>
             <div class="input-group mb-6">
                 <label for="json-deobfuscate-input" class="block text-gray-800 dark:text-gray-100 text-lg font-medium mb-3">
                     <i class="fas fa-lock"></i> Obfuscated Input
                 </label>
-                <div class="relative">
-                    <textarea id="json-deobfuscate-input" rows="10" placeholder="Paste obfuscated JSON here..." class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                <div id="json-deobfuscate-area" class="relative">
+                    <textarea id="json-deobfuscate-input" rows="10" placeholder="Paste obfuscated JSON here or drag & drop a file..." class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-4 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
+                    <div class="absolute bottom-4 right-4 flex space-x-2">
+                        <label for="deobfuscate-file-input" class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 flex items-center space-x-2">
+                            <i class="fas fa-file-upload text-gray-600 dark:text-gray-300"></i>
+                            <span class="text-sm text-gray-800 dark:text-gray-100 font-semibold">Upload JSON File</span>
+                        </label>
+                        <input type="file" id="deobfuscate-file-input" accept=".json">
+                    </div>
                 </div>
             </div>
 
@@ -415,6 +429,8 @@
             const obfuscateBtn = document.getElementById('obfuscate-btn');
             const copyObfuscateBtn = document.getElementById('copy-obfuscate-btn');
             const obfuscateFormatToggle = document.getElementById('obfuscate-format-toggle');
+            const obfuscateFileInput = document.getElementById('obfuscate-file-input');
+            const jsonObfuscateArea = document.getElementById('json-obfuscate-area');
 
             // Deobfuscator JSON elements
             const jsonDeobfuscateInput = document.getElementById('json-deobfuscate-input');
@@ -422,6 +438,8 @@
             const deobfuscateBtn = document.getElementById('deobfuscate-btn');
             const copyDeobfuscateBtn = document.getElementById('copy-deobfuscate-btn');
             const deobfuscateFormatToggle = document.getElementById('deobfuscate-format-toggle');
+            const deobfuscateFileInput = document.getElementById('deobfuscate-file-input');
+            const jsonDeobfuscateArea = document.getElementById('json-deobfuscate-area');
             
             // Obfuscator ZIP elements
             const zipObfuscateInput = document.getElementById('zip-obfuscate-input');
@@ -565,13 +583,69 @@
                     } else if (format === 'minify') {
                         return JSON.stringify(parsedJson);
                     }
-                    return jsonString; // Fallback, though 'none' is removed
+                    return jsonString; // Fallback
                 } catch (e) {
                     console.error("Formatting error:", e);
                     showMessage('Invalid JSON for formatting.', 'error');
                     return jsonString; // Return original on error
                 }
             }
+            
+            // --- JSON File Uploads ---
+            function setupJsonFileUpload(fileInput, textarea) {
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file && file.type === 'application/json') {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            textarea.value = e.target.result;
+                            showMessage(`File "${file.name}" loaded.`, 'success');
+                        };
+                        reader.onerror = (e) => {
+                            console.error('File reading error:', e);
+                            showMessage('Failed to read the file.', 'error');
+                        };
+                        reader.readAsText(file);
+                    } else if (file) {
+                        showMessage('Please select a valid .json file.', 'error');
+                    }
+                });
+            }
+            setupJsonFileUpload(obfuscateFileInput, jsonObfuscateInput);
+            setupJsonFileUpload(deobfuscateFileInput, jsonDeobfuscateInput);
+
+            // --- JSON Drag and Drop ---
+            function setupJsonDragAndDrop(area, textarea) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    area.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                area.addEventListener('drop', (e) => {
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type === 'application/json') {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            textarea.value = e.target.result;
+                            showMessage(`File "${file.name}" loaded.`, 'success');
+                        };
+                        reader.onerror = (e) => {
+                            console.error('File reading error:', e);
+                            showMessage('Failed to read the file.', 'error');
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        showMessage('Please drop a valid .json file.', 'error');
+                    }
+                });
+            }
+            setupJsonDragAndDrop(jsonObfuscateArea, jsonObfuscateInput);
+            setupJsonDragAndDrop(jsonDeobfuscateArea, jsonDeobfuscateInput);
+
             
             // --- JSON Obfuscator Functions ---
             function obfuscateJson(obj) {
